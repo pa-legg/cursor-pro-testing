@@ -30,13 +30,29 @@ Pull with: `ollama pull <model-name>`
 2. **Backend**: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
 3. **Frontend**: `cd frontend && npm run dev`
 
+### API Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/health` | Health check (also verifies Ollama connectivity) |
+| POST | `/api/documents/upload` | Upload + auto-ingest document |
+| GET | `/api/documents` | List all documents |
+| DELETE | `/api/documents/{id}` | Delete document + vectors |
+| GET | `/api/architecture/summary` | Generate structured architecture summary |
+| POST | `/api/chat` | Streaming RAG chat (SSE) |
+| POST/GET | `/api/conversations` | Create/list conversations |
+| PATCH/DELETE | `/api/conversations/{id}` | Rename/delete conversation |
+| GET | `/api/conversations/{id}/messages` | List messages |
+
 ### Key Gotchas
 
 - Ollama serve must be running before the backend starts processing documents or chat queries; the backend does not retry failed Ollama connections.
 - Document ingestion (especially images via LLaVA) runs synchronously in a thread pool — large images can take 30+ seconds on CPU.
 - Chat responses stream via SSE (`text/event-stream`); the frontend uses `fetch` + `ReadableStream` to consume them.
+- LLM inference on CPU is slow (30-90s per query for llama3.2:3b). Architecture summaries take 1-2 minutes.
 - ChromaDB and SQLite data persist in `backend/data/db/`. Delete this directory to reset all indexed documents and conversation history.
 - The frontend build uses `tsc -b` which enforces strict unused-variable checks; fix all TS errors before committing.
+- The health endpoint at `/api/health` now checks both the FastAPI server and Ollama reachability.
 
 ### Lint / Test / Build
 
