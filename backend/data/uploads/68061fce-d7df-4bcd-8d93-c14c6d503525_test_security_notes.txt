@@ -1,0 +1,31 @@
+Security Assessment Notes - XR-7500 PLC Module
+
+Date: 2026-03-15
+Researcher: Alicia Smith
+
+Initial Findings:
+
+1. Default Credentials: The XR-7500 ships with default admin credentials (admin/admin) on the web management interface accessible on port 80. No forced password change on first login.
+
+2. Firmware Analysis: The firmware binary was extracted via JTAG debug port on PCB header J5. The bootloader at 0x08000000 does not implement secure boot. Firmware is not code-signed.
+
+3. Network Protocols: Modbus TCP/IP communications on port 502 are unencrypted. No TLS support. An attacker on the same network segment could intercept and modify PLC commands.
+
+4. Communication Interfaces Identified:
+   - Ethernet: 10/100 Mbps (Modbus TCP/IP, EtherNet/IP)
+   - Serial: RS-232 and RS-485
+   - CAN Bus: CAN 2.0B
+   - USB 2.0 Type-B
+   
+5. RTOS: FreeRTOS v10.4.3 - known CVEs should be checked. Custom HAL layer needs review.
+
+6. Web Server: lwIP embedded web server for configuration. Potential for buffer overflow attacks.
+
+7. Physical Security: DIN rail mount. No tamper detection mechanisms identified.
+
+Recommendations:
+- Implement network segmentation to isolate PLC communications
+- Disable JTAG debug port in production
+- Enforce strong password policy
+- Monitor Modbus traffic for anomalous commands
+- Assess FreeRTOS CVE exposure
