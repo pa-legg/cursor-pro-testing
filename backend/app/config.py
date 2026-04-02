@@ -13,11 +13,11 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2:3b")
-VISION_MODEL = os.getenv("VISION_MODEL", "llava:7b")
+VISION_MODEL = os.getenv("VISION_MODEL", "moondream")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 
-CHUNK_SIZE = 512
-CHUNK_OVERLAP = 64
+CHUNK_SIZE = 256
+CHUNK_OVERLAP = 32
 TOP_K = 8
 
 SUPPORTED_EXTENSIONS = {

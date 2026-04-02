@@ -114,7 +114,8 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     client = ollama.Client(host=OLLAMA_BASE_URL)
     embeddings = []
     for text in texts:
-        resp = client.embed(model=EMBED_MODEL, input=text)
+        truncated = text[:2000] if len(text) > 2000 else text
+        resp = client.embed(model=EMBED_MODEL, input=truncated)
         embeddings.append(resp["embeddings"][0])
     return embeddings
 
