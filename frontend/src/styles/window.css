@@ -1,0 +1,105 @@
+.window {
+  position: absolute;
+  background: var(--bg-window);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-width: 400px;
+  min-height: 300px;
+  overflow: hidden;
+}
+
+.window--focused {
+  border-color: var(--border-active);
+}
+
+.window--maximized {
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: calc(100% - var(--taskbar-height)) !important;
+  border-radius: 0;
+}
+
+.window__titlebar {
+  height: var(--window-title-height);
+  background: var(--bg-window-title);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.window__titlebar:active {
+  cursor: grabbing;
+}
+
+.window__titlebar-icon {
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.window__titlebar-text {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.window--focused .window__titlebar-text {
+  color: var(--text-primary);
+}
+
+.window__controls {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.window__control {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  opacity: 0.7;
+}
+
+.window__control:hover {
+  opacity: 1;
+}
+
+.window__control--minimize {
+  background: var(--text-yellow);
+}
+
+.window__control--maximize {
+  background: var(--text-green);
+}
+
+.window__control--close {
+  background: var(--text-red);
+}
+
+.window__content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.window__resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}

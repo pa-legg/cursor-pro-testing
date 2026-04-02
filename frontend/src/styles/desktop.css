@@ -1,0 +1,93 @@
+.desktop {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: var(--bg-desktop);
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(61, 89, 161, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(122, 162, 247, 0.05) 0%, transparent 50%);
+  overflow: hidden;
+}
+
+.desktop__drop-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(61, 89, 161, 0.15);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.desktop__drop-overlay-inner {
+  border: 3px dashed var(--text-accent);
+  border-radius: 16px;
+  padding: 48px 64px;
+  text-align: center;
+  background: rgba(30, 31, 43, 0.9);
+}
+
+.desktop__drop-overlay-inner .icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.desktop__drop-overlay-inner .title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-accent);
+  margin-bottom: 8px;
+}
+
+.desktop__drop-overlay-inner .subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.desktop__icons {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  width: 80px;
+  transition: background 0.15s;
+}
+
+.desktop-icon:hover {
+  background: rgba(122, 162, 247, 0.1);
+}
+
+.desktop-icon:active {
+  background: rgba(122, 162, 247, 0.2);
+}
+
+.desktop-icon__icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.desktop-icon__label {
+  font-size: 11px;
+  color: var(--text-primary);
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  word-break: break-word;
+}
