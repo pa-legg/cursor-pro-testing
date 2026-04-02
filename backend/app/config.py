@@ -18,7 +18,7 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 64
-TOP_K = 5
+TOP_K = 8
 
 SUPPORTED_EXTENSIONS = {
     "pdf", "png", "jpg", "jpeg", "gif", "bmp", "tiff", "svg",

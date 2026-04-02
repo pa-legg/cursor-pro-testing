@@ -1,6 +1,24 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getConversations, getMessages, streamChat, type Conversation, type Message } from '../services/api';
+import {
+  getConversations,
+  getMessages,
+  streamChat,
+  deleteConversation,
+  renameConversation,
+  getArchitectureSummary,
+  type Conversation,
+  type Message,
+  type ChatDoneEvent,
+} from '../services/api';
 import '../styles/chat.css';
+
+interface ResponseMeta {
+  confidence: string;
+  confidence_score?: number;
+  needs_more_data?: boolean;
+  coverage_gaps?: string[];
+  cross_referenced?: boolean;
+}
 
 export default function ChatAssistant() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -9,6 +27,8 @@ export default function ChatAssistant() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState('');
+  const [lastMeta, setLastMeta] = useState<ResponseMeta | null>(null);
+  const [archLoading, setArchLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const refreshConversations = useCallback(async () => {
@@ -39,6 +59,7 @@ export default function ChatAssistant() {
     setInput('');
     setStreaming(true);
     setStreamContent('');
+    setLastMeta(null);
 
     const userMsg: Message = {
       id: Date.now(),
@@ -60,15 +81,25 @@ export default function ChatAssistant() {
           fullContent += chunk.content;
           setStreamContent(fullContent);
         } else if (chunk.type === 'done') {
-          convId = chunk.conversation_id || convId;
+          const done = chunk as ChatDoneEvent;
+          convId = done.conversation_id || convId;
+
+          const meta: ResponseMeta = {
+            confidence: done.confidence,
+            confidence_score: done.confidence_score,
+            needs_more_data: done.needs_more_data,
+            coverage_gaps: done.coverage_gaps,
+            cross_referenced: done.cross_referenced,
+          };
+          setLastMeta(meta);
 
           const assistantMsg: Message = {
             id: Date.now() + 1,
             conversation_id: convId || '',
             role: 'assistant',
             content: fullContent,
-            sources: chunk.sources || null,
-            confidence: chunk.confidence || null,
+            sources: done.sources || null,
+            confidence: done.confidence || null,
             created_at: new Date().toISOString(),
           };
           setMessages(prev => [...prev, assistantMsg]);
@@ -107,11 +138,81 @@ export default function ChatAssistant() {
   const handleNewConv = useCallback(() => {
     setActiveConvId(null);
     setMessages([]);
+    setLastMeta(null);
   }, []);
 
-  const selectConversation = useCallback((convId: string) => {
-    setActiveConvId(convId);
-  }, []);
+  const handleDeleteConv = useCallback(async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Delete this conversation?')) return;
+    try {
+      await deleteConversation(convId);
+      if (activeConvId === convId) {
+        setActiveConvId(null);
+        setMessages([]);
+      }
+      refreshConversations();
+    } catch { /* */ }
+  }, [activeConvId, refreshConversations]);
+
+  const handleRenameConv = useCallback(async (convId: string, currentTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newTitle = prompt('Rename conversation:', currentTitle);
+    if (!newTitle || newTitle === currentTitle) return;
+    try {
+      await renameConversation(convId, newTitle);
+      refreshConversations();
+    } catch { /* */ }
+  }, [refreshConversations]);
+
+  const handleArchSummary = useCallback(async () => {
+    if (archLoading || streaming) return;
+    setArchLoading(true);
+
+    const userMsg: Message = {
+      id: Date.now(),
+      conversation_id: activeConvId || '',
+      role: 'user',
+      content: '📐 Generate System Architecture Summary',
+      sources: null,
+      confidence: null,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    try {
+      const result = await getArchitectureSummary();
+      const assistantMsg: Message = {
+        id: Date.now() + 1,
+        conversation_id: '',
+        role: 'assistant',
+        content: result.summary,
+        sources: result.sources,
+        confidence: result.confidence.level,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+      setLastMeta({
+        confidence: result.confidence.level,
+        confidence_score: result.confidence.score,
+        needs_more_data: result.confidence.needs_more_data,
+        coverage_gaps: result.source_analysis.coverage_gaps,
+        cross_referenced: result.source_analysis.cross_referenced,
+      });
+    } catch {
+      const errorMsg: Message = {
+        id: Date.now() + 1,
+        conversation_id: '',
+        role: 'assistant',
+        content: '❌ Failed to generate architecture summary. Ensure documents are uploaded and Ollama is running.',
+        sources: null,
+        confidence: null,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setArchLoading(false);
+    }
+  }, [archLoading, streaming, activeConvId]);
 
   return (
     <div className="chat">
@@ -126,10 +227,14 @@ export default function ChatAssistant() {
               <div
                 key={conv.id}
                 className={`chat__conv-item ${activeConvId === conv.id ? 'chat__conv-item--active' : ''}`}
-                onClick={() => selectConversation(conv.id)}
+                onClick={() => { setActiveConvId(conv.id); setLastMeta(null); }}
                 title={conv.title}
               >
-                {conv.title}
+                <span className="chat__conv-item-title">{conv.title}</span>
+                <span className="chat__conv-item-actions">
+                  <button onClick={(e) => handleRenameConv(conv.id, conv.title, e)} title="Rename">✎</button>
+                  <button onClick={(e) => handleDeleteConv(conv.id, e)} title="Delete">✕</button>
+                </span>
               </div>
             ))}
           </div>
@@ -142,8 +247,14 @@ export default function ChatAssistant() {
                 <div className="icon">🔬</div>
                 <div className="title">TeardownOS Assistant</div>
                 <div className="subtitle">
-                  Ask questions about uploaded documents. The assistant uses RAG to retrieve relevant information
-                  and provides cited, confidence-scored answers. Upload documents by dragging files onto the desktop.
+                  Upload documents by dragging files onto the desktop. Then ask questions
+                  here — the assistant retrieves relevant information and provides cited,
+                  cross-referenced answers with confidence scoring.
+                </div>
+                <div className="chat__quick-actions">
+                  <button className="chat__action-btn" onClick={handleArchSummary} disabled={archLoading}>
+                    📐 Generate Architecture Summary
+                  </button>
                 </div>
               </div>
             )}
@@ -159,6 +270,10 @@ export default function ChatAssistant() {
               </div>
             )}
 
+            {lastMeta && (
+              <MetaPanel meta={lastMeta} />
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -169,7 +284,22 @@ export default function ChatAssistant() {
             </div>
           )}
 
+          {archLoading && (
+            <div className="chat__streaming-indicator">
+              <span className="processing-spinner" />
+              <span>Generating architecture summary (this may take a minute)...</span>
+            </div>
+          )}
+
           <div className="chat__input-area">
+            <button
+              className="chat__arch-btn"
+              onClick={handleArchSummary}
+              disabled={archLoading || streaming}
+              title="Generate System Architecture Summary"
+            >
+              📐
+            </button>
             <textarea
               className="chat__input"
               value={input}
@@ -177,14 +307,44 @@ export default function ChatAssistant() {
               onKeyDown={handleKeyDown}
               placeholder="Ask about your uploaded documents..."
               rows={1}
-              disabled={streaming}
+              disabled={streaming || archLoading}
             />
-            <button className="chat__send-btn" onClick={handleSend} disabled={!input.trim() || streaming}>
+            <button className="chat__send-btn" onClick={handleSend} disabled={!input.trim() || streaming || archLoading}>
               Send
             </button>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MetaPanel({ meta }: { meta: ResponseMeta }) {
+  return (
+    <div className="chat-meta-panel">
+      <div className="chat-meta-panel__row">
+        <span className={`chat-meta-panel__confidence chat-meta-panel__confidence--${meta.confidence}`}>
+          {meta.confidence.toUpperCase()} CONFIDENCE
+          {meta.confidence_score !== undefined && ` (${(meta.confidence_score * 100).toFixed(0)}%)`}
+        </span>
+        {meta.cross_referenced && (
+          <span className="chat-meta-panel__badge chat-meta-panel__badge--cross-ref">✓ Cross-referenced</span>
+        )}
+        {!meta.cross_referenced && (
+          <span className="chat-meta-panel__badge chat-meta-panel__badge--single">⚠ Single source</span>
+        )}
+        {meta.needs_more_data && (
+          <span className="chat-meta-panel__badge chat-meta-panel__badge--needs-data">📋 More data needed</span>
+        )}
+      </div>
+      {meta.coverage_gaps && meta.coverage_gaps.length > 0 && (
+        <div className="chat-meta-panel__gaps">
+          <span className="chat-meta-panel__gaps-title">Data gaps:</span>
+          {meta.coverage_gaps.map((gap, i) => (
+            <span key={i} className="chat-meta-panel__gap-item">• {gap}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

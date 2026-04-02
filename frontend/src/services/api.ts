@@ -35,6 +35,31 @@ export interface Message {
   created_at: string;
 }
 
+export interface HealthStatus {
+  status: string;
+  service: string;
+  ollama: string;
+  models: string[];
+}
+
+export interface ChatDoneEvent {
+  type: 'done';
+  conversation_id: string;
+  sources: Source[];
+  confidence: string;
+  confidence_score?: number;
+  needs_more_data?: boolean;
+  coverage_gaps?: string[];
+  cross_referenced?: boolean;
+}
+
+export interface ChatTokenEvent {
+  type: 'token';
+  content: string;
+}
+
+export type ChatEvent = ChatTokenEvent | ChatDoneEvent;
+
 export async function uploadFile(file: File): Promise<Document> {
   const formData = new FormData();
   formData.append('file', file);
@@ -55,9 +80,9 @@ export async function getDocuments(): Promise<Document[]> {
   return data.documents;
 }
 
-export async function getDocument(docId: string): Promise<Document> {
-  const res = await fetch(`${API_BASE}/documents/${docId}`);
-  return res.json();
+export async function deleteDocument(docId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/documents/${docId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Delete failed');
 }
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -75,6 +100,18 @@ export async function createConversation(title: string): Promise<Conversation> {
   return res.json();
 }
 
+export async function renameConversation(convId: string, title: string): Promise<void> {
+  await fetch(`${API_BASE}/conversations/${convId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteConversation(convId: string): Promise<void> {
+  await fetch(`${API_BASE}/conversations/${convId}`, { method: 'DELETE' });
+}
+
 export async function getMessages(conversationId: string): Promise<Message[]> {
   const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`);
   const data = await res.json();
@@ -84,7 +121,7 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 export async function* streamChat(
   query: string,
   conversationId?: string
-): AsyncGenerator<{ type: string; content?: string; conversation_id?: string; sources?: Source[]; confidence?: string }> {
+): AsyncGenerator<ChatEvent> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -119,11 +156,18 @@ export async function* streamChat(
   }
 }
 
-export async function checkHealth(): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}/health`);
-    return res.ok;
-  } catch {
-    return false;
-  }
+export async function checkHealth(): Promise<HealthStatus> {
+  const res = await fetch(`${API_BASE}/health`);
+  return res.json();
+}
+
+export async function getArchitectureSummary(): Promise<{
+  summary: string;
+  sources: Source[];
+  confidence: { level: string; score: number; needs_more_data: boolean; reason: string };
+  source_analysis: { unique_documents: number; cross_referenced: boolean; coverage_gaps: string[] };
+}> {
+  const res = await fetch(`${API_BASE}/architecture/summary`);
+  if (!res.ok) throw new Error('Failed to generate summary');
+  return res.json();
 }

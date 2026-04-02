@@ -123,3 +123,28 @@ async def get_messages(conversation_id: str):
             d["sources"] = json.loads(d["sources"])
         result.append(d)
     return result
+
+
+async def delete_document_db(doc_id: str):
+    db = await get_db()
+    await db.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+    await db.commit()
+    await db.close()
+
+
+async def rename_conversation_db(conv_id: str, title: str):
+    db = await get_db()
+    await db.execute(
+        "UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?",
+        (title, datetime.utcnow().isoformat(), conv_id),
+    )
+    await db.commit()
+    await db.close()
+
+
+async def delete_conversation_db(conv_id: str):
+    db = await get_db()
+    await db.execute("DELETE FROM messages WHERE conversation_id = ?", (conv_id,))
+    await db.execute("DELETE FROM conversations WHERE id = ?", (conv_id,))
+    await db.commit()
+    await db.close()

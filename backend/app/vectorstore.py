@@ -36,3 +36,14 @@ def query_documents(query_embedding: list[float], top_k: int = 5) -> dict:
         include=["documents", "metadatas", "distances"],
     )
     return results
+
+
+def delete_document_vectors(doc_id: str):
+    """Delete all vectors belonging to a specific document."""
+    collection = get_collection()
+    try:
+        results = collection.get(where={"doc_id": doc_id})
+        if results and results["ids"]:
+            collection.delete(ids=results["ids"])
+    except Exception:
+        pass

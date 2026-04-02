@@ -15,8 +15,12 @@ export default function App() {
 
   useEffect(() => {
     const check = async () => {
-      const ok = await checkHealth();
-      setOllamaStatus(ok ? 'connected' : 'error');
+      try {
+        const health = await checkHealth();
+        setOllamaStatus(health.ollama === 'connected' ? 'connected' : 'error');
+      } catch {
+        setOllamaStatus('error');
+      }
     };
     check();
     const iv = setInterval(check, 10000);
