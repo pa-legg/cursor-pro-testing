@@ -47,10 +47,17 @@ export default function FileManager() {
   }, []);
 
   useEffect(() => {
-    refresh();
-    const iv = setInterval(refresh, 3000);
-    return () => clearInterval(iv);
-  }, [refresh]);
+    let cancelled = false;
+    const doRefresh = async () => {
+      try {
+        const docs = await getDocuments();
+        if (!cancelled) setDocuments(docs);
+      } catch { /* offline */ }
+    };
+    doRefresh();
+    const iv = setInterval(doRefresh, 3000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, []);
 
   const totalSize = documents.reduce((s, d) => s + d.file_size, 0);
   const indexedCount = documents.filter(d => d.status === 'indexed').length;

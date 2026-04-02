@@ -80,7 +80,7 @@ export default function ChatAssistant() {
           refreshConversations();
         }
       }
-    } catch (err) {
+    } catch {
       const errorMsg: Message = {
         id: Date.now() + 1,
         conversation_id: convId || '',

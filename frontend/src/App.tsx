@@ -25,6 +25,7 @@ export default function App() {
 
   useEffect(() => {
     openWindow('files', 'File Manager — ~/Documents', '📁', 'files', 750, 450);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenApp = useCallback((id: string) => {
